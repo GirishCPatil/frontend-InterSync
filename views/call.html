@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Call - InterSync</title>
+    <meta name="description" content="Peer-to-peer video interview">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Top Bar ── */
+        .call-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(108, 99, 255, 0.15);
+            z-index: 10;
+        }
+
+        .topbar-logo {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6c63ff, #00d4aa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .call-timer {
+            font-size: 16px;
+            font-family: monospace;
+            font-weight: 600;
+            color: #00d4aa;
+            background: rgba(0, 212, 170, 0.1);
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 212, 170, 0.2);
+        }
+
+        .peer-name-badge {
+            font-size: 14px;
+            color: #b0b0cc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff9800;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-dot.connected {
+            background: #00d4aa;
+            animation: none;
+            box-shadow: 0 0 10px rgba(0, 212, 170, 0.5);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* ── Video Area ── */
+        .video-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            gap: 20px;
+            position: relative;
+        }
+
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 600px;
+            max-height: 450px;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #05050a;
+            border: 1px solid rgba(108, 99, 255, 0.2);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-wrapper.remote-video {
+            border-color: rgba(0, 212, 170, 0.3);
+            flex: 1.5;
+            max-width: 800px;
+            max-height: 600px;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-label {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(15, 15, 26, 0.7);
+            backdrop-filter: blur(5px);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 5;
+        }
+
+        /* Placeholder when video is off/loading */
+        .video-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.9), rgba(15, 15, 26, 0.9));
+            z-index: 2;
+        }
+
+        .placeholder-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(108, 99, 255, 0.2);
+            border: 2px solid rgba(108, 99, 255, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: #b0b0ff;
+            margin-bottom: 10px;
+        }
+
+        .placeholder-text {
+            font-size: 14px;
+            color: #8888aa;
+        }
+
+        /* ── Controls Bar ── */
+        .controls-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(15, 15, 26, 0.8);
+            border-top: 1px solid rgba(108, 99, 255, 0.1);
+            z-index: 10;
+        }
+
+        .control-btn {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.2s;
+            backdrop-filter: blur(5px);
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .control-btn.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #0f0f1a;
+        }
+
+        .control-btn.btn-end {
+            background: #ff4757;
+            width: 65px;
+            height: 65px;
+            font-size: 24px;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
+        }
+
+        .control-btn.btn-end:hover {
+            background: #ff6b81;
+            transform: scale(1.05);
+        }
+
+        /* ── Status Overlay ── */
+        .status-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 15, 26, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        .status-overlay.hidden {
+            display: none;
+        }
+
+        /* ── Rating Modal ── */
+        .rating-modal {
+            background: linear-gradient(145deg, rgba(26, 26, 46, 0.95), rgba(15, 15, 26, 0.98));
+            border: 1px solid rgba(108, 99, 255, 0.3);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            transform: translateY(20px);
+            transition: transform 0.3s;
+        }
+
+        .modal-overlay.show .rating-modal {
+            transform: translateY(0);
+        }
+
+        .stars {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-direction: row-reverse;
+            /* For CSS sibling selector hover trick */
+        }
+
+        .star {
+            font-size: 35px;
+            color: #444;
+            cursor: pointer;
+            transition: text-shadow 0.2s, color 0.2s;
+        }
+
+        .star:hover,
+        .star:hover~.star {
+            color: #ff9800;
+            text-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+        }
+
+        .star.selected {
+            color: #ff9800;
+        }
+
+        .btn-submit-rating {
+            background: linear-gradient(135deg, #ff9800, #ff5722);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-right: 10px;
+        }
+
+        .btn-submit-rating:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
+        }
+
+        .btn-submit-rating:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-skip-rating {
+            background: transparent;
+            color: #8888aa;
+            border: 1px solid #444;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-skip-rating:hover {
+            color: white;
+            border-color: #888;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(108, 99, 255, 0.2);
+            border-top: 3px solid #6c63ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .status-text {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .status-sub {
+            font-size: 14px;
+            color: #8888aa;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .video-container {
+                flex-direction: column;
+                padding: 10px;
+                gap: 10px;
+            }
+
+            .video-wrapper.remote-video {
+                max-height: none;
+            }
+
+            .video-wrapper {
+                max-height: 250px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Top Bar -->
+    <div class="call-topbar">
+        <div class="topbar-logo">⚡ InterSync</div>
+
+        <div class="call-timer" id="callTimer">00:00</div>
+
+        <div class="peer-name-badge">
+            <div id="connectionDot" class="status-dot"></div>
+            <span id="callStatusText">Connecting...</span>
+        </div>
+    </div>
+
+    <!-- Video Area -->
+    <div class="video-container">
+
+        <!-- Remote Video -->
+        <div class="video-wrapper remote-video">
+            <div id="remotePlaceholder" class="video-placeholder">
+                <div class="placeholder-avatar">P</div>
+                <div class="placeholder-text">Waiting for video stream...</div>
+            </div>
+            <video id="remoteVideo" autoplay playsinline></video>
+            <div class="video-label">Peer</div>
+        </div>
+
+        <!-- Local Video -->
+        <div class="video-wrapper">
+            <div id="localPlaceholder" class="video-placeholder">
+                <div class="placeholder-avatar">Y</div>
+                <div class="placeholder-text">Camera Starting...</div>
+            </div>
+            <video id="localVideo" autoplay playsinline muted></video>
+            <div class="video-label">You</div>
+        </div>
+
+    </div>
+
+    <!-- Controls Box -->
+    <div class="controls-bar">
+        <button id="toggleMicBtn" class="control-btn" title="Toggle Microphone">🎤</button>
+        <button id="toggleCamBtn" class="control-btn" title="Toggle Camera">📹</button>
+        <button id="toggleScreenBtn" class="control-btn" title="Share Screen">💻</button>
+        <button id="endCallBtn" class="control-btn btn-end" title="End Call">📞</button>
+    </div>
+
+    <!-- Initial Connecting Overlay -->
+    <div id="statusOverlay" class="status-overlay">
+        <div class="spinner"></div>
+        <div id="overlayText" class="status-text">Establishing Connection...</div>
+        <div class="status-sub">Please wait while we set up the video stream</div>
+    </div>
+
+    <!-- Rating Modal Overlay -->
+    <div id="ratingOverlay" class="status-overlay hidden">
+        <div class="rating-modal">
+            <h2 style="margin-bottom: 10px; color: #e0e0e0;">Call Ended</h2>
+            <p style="color: #b0b0cc; font-size: 14px;">How was your experience with this peer?</p>
+
+            <div class="stars" id="starContainer">
+                <!-- Stars are in reverse order for CSS hover trick to work properly -->
+                <span class="star" data-value="5">★</span>
+                <span class="star" data-value="4">★</span>
+                <span class="star" data-value="3">★</span>
+                <span class="star" data-value="2">★</span>
+                <span class="star" data-value="1">★</span>
+            </div>
+
+            <div style="display: flex; justify-content: center; margin-top: 10px;">
+                <button id="submitRatingBtn" class="btn-submit-rating" disabled>Submit Rating</button>
+                <button id="skipRatingBtn" class="btn-skip-rating">Skip</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast"
+        style="position: fixed; bottom: 30px; right: 30px; padding: 14px 24px; border-radius: 10px; font-size: 14px; font-weight: 500; z-index: 1000; background: rgba(0, 212, 170, 0.95); color: white; display: none;">
+    </div>
+
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="../script/call.js"></script>
+
+</body>
+
+</html>

@@ -3,7 +3,7 @@ const user = JSON.parse(localStorage.getItem('user') || '{}');
 
 // ── Auth & Premium Check ──
 if (!token) {
-    window.location.href = './login.html';
+    window.location.href = '../index.html';
 } else if (!user.isPremium) {
     window.location.href = './premium.html';
 }

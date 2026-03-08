@@ -4,7 +4,7 @@ const user = JSON.parse(localStorage.getItem('user') || '{}');
 
 // Auth check
 if (!token) {
-    window.location.href = './login.html';
+    window.location.href = '../index.html';
 }
 
 // If already premium, show badge

@@ -4,7 +4,7 @@ const user = JSON.parse(localStorage.getItem('user') || '{}');
 
 // ── Auth Check ──
 if (!token) {
-    window.location.href = './login.html';
+    window.location.href = '../index.html';
 }
 
 // ── Fetch fresh user data from DB to keep localStorage in sync ──

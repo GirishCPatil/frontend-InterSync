@@ -20,7 +20,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         localStorage.setItem('user', JSON.stringify(res.data.user));
 
         // Redirect to dashboard
-        window.location.href = './dashboard.html';
+        window.location.href = './views/dashboard.html';
 
     } catch (err) {
         errorMsg.textContent = err.response?.data?.message || 'Login failed. Please try again.';

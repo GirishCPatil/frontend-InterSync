@@ -1,4 +1,4 @@
-const BASE_URL = 'https://intersync.onrender.com';
+const BASE_URL = 'http://localhost:4000';
 const token = localStorage.getItem('token');
 const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -119,6 +119,9 @@ if (user.isPremium) {
     document.getElementById('buyPremiumBtn').style.display = 'none';
     document.getElementById('statStatus').textContent = 'Premium';
     document.getElementById('navQuestionBankBtn').style.display = 'inline-block';
+    // Show real leaderboard button, hide the locked teaser
+    document.getElementById('viewLeaderboardBtn').style.display = 'inline-flex';
+    document.getElementById('lockedLeaderboardBtn').style.display = 'none';
 }
 
 document.getElementById('statSkills').textContent = (user.skills || []).length;
@@ -371,6 +374,12 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
 // ══════════════════════════════════════════
 const leaderboardModal = document.getElementById('leaderboardModal');
 
+// Locked leaderboard button for free users
+document.getElementById('lockedLeaderboardBtn').addEventListener('click', () => {
+    showToast('🔒 Leaderboard is a Premium feature. Upgrade to unlock!', 'error');
+    setTimeout(() => window.location.href = './premium.html', 1800);
+});
+
 document.getElementById('viewLeaderboardBtn').addEventListener('click', async () => {
     leaderboardModal.classList.add('show');
     const list = document.getElementById('leaderboardList');
@@ -403,7 +412,13 @@ document.getElementById('viewLeaderboardBtn').addEventListener('click', async ()
         `).join('');
 
     } catch (err) {
-        list.innerHTML = `<div style="text-align: center; color: #ff6b6b;">Failed to load leaderboard.</div>`;
+        leaderboardModal.classList.remove('show');
+        if (err.response?.status === 403) {
+            showToast('🔒 Leaderboard is a Premium feature. Upgrade to unlock!', 'error');
+            setTimeout(() => window.location.href = './premium.html', 1800);
+        } else {
+            showToast('Failed to load leaderboard.', 'error');
+        }
     }
 });
 
